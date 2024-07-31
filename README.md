@@ -2,6 +2,6 @@
 <img src="hexagon.jpg">
 <style>
 body {
-  background-image: url('ballsandsmoke.gif');
+  background-image: url('ballsandsmokeop.gif');
 }
 </style>
