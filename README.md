@@ -2,7 +2,7 @@
 <img src="hexagon.jpg">
 <style>
 body {
-  background-image: url('mountain.jpeg');
+  background-image: url('mountain.jpg');
 }
 </style>
 
