@@ -2,7 +2,8 @@
 <img src="hexagon.jpg">
 <style>
 body {
-  background-image: url('topmap.png');
+  background-image: url('redballs.gif');
+  background-repeat: no-repeat;
 }
 </style>
 
