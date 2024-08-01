@@ -4,6 +4,8 @@
 body {
   background-image: url('redballs.gif');
   background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-size: cover;
 }
 </style>
 
