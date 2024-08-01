@@ -1,6 +1,6 @@
 <style>
 body {
-  background-image: url('beach.webp');
+  background-image: url('mountainhd.jpg');
   background-repeat: no-repeat;
 }
 </style>
