@@ -1,0 +1,265 @@
+@import url('https://fonts.googleapis.com/css?family=Lobster|Roboto');
+
+/*///////////// Workspace setup ////////////////*/
+body {
+  padding: 20px;
+  font: 14px/20px "Roboto", sans-serif;
+}
+
+.container {
+  width: 90%;
+  height: 480px;
+  min-width: 280px;
+  margin: 0 auto;
+  box-shadow: 5px 5px 25px #333;
+  background-color: #001220;
+  overflow-x:hidden;
+  overflow: auto;
+}
+
+a, a:hover, a:visited, a:active, a:focus, a:link {
+  text-decoration: none;
+  color: inherit;
+}
+
+section {
+  font: 16px/28px "Roboto";
+  padding: 0px 20px;
+}
+
+/*//////////////// CSS NavBar //////////////////*/
+
+nav {
+  height: 52px;
+  position: relative;
+  background-color: rgb(255, 255, 255);
+  
+  .right {
+    position: absolute;
+    right: 0;
+    top: 0;
+    line-height: 52px;
+    padding-right: 20px;
+    padding-left: 20px;
+    color:#333;
+  }
+  @media screen and (min-width: 1200px){
+    padding: 0 20px;
+    padding-right: 58px;
+    padding-left: 160px;
+  }
+}
+
+.menu-toggle {
+  display:none;
+  
+  &:checked{
+    &~ .collapse {
+      height: 300px;
+    }
+    &~ .menu-toggle-ui:after {
+      transform: rotate(180deg);
+      color: #f30;
+    }
+  }
+}
+
+.menu-toggle-ui {
+  height: 0;
+  width: 0;
+  font: 0/0 a;
+  position: absolute;
+  top: 0; left: 0;
+  
+  &:after {
+    position: absolute;
+    content: '';
+    width: 52px;
+    height: 52px;
+    text-align: center;
+    top: 0;
+    left: 0;
+    transition: 500ms ease-in-out all;
+    color: #333;
+    font-family: "FontAwesome";
+    font-size: 14px;
+    line-height: 52px;
+  }
+  @media screen and (min-width: 1200px){
+    display:none;
+  }
+}
+
+.nav-logo {
+  margin-left: 52px;
+  padding-top: 10px;
+  font: 24px/32px "Lobster", sans-serif;
+  color: #000;
+  @media screen and (min-width: 1200px){
+    margin-left:0;
+    position: absolute;
+    left: 20px;
+    top: 0;
+  }
+}
+
+.collapse {
+  overflow-y: hidden;
+  height: 0;
+  transition: 500ms height;
+  left: 0;  
+  top:52px;
+  width: 100%;
+  position: absolute;
+  @media screen and (min-width: 1200px){
+    position: static;
+    transition: 0ms all;
+    height: inherit;    
+    top: 0;
+  }
+}
+
+.list-unstyled{
+  list-style:none;
+  padding: 0;
+  margin: 0;
+  > li {
+    list-style:none;
+    padding: 0;
+    margin: 0;
+  }
+}
+
+.main-menu {
+  > li a {
+    display:block;
+    font-size: 1em;
+    line-height: 3em;
+    padding: 0 1em;
+    background-color: #333;
+    color: #fff;
+    transition: 500ms background-color, 500ms color;
+    letter-spacing: 1px;
+    font-weight: bold;
+    text-transform: uppercase;
+    &:hover {
+      background-color: #fb0 !important;
+      color: #000;
+    }
+  }
+  > li{
+    &:nth-child(even) a {
+      background-color: #393939;
+    }
+    @media screen and (min-width: 1200px){
+      display: inline-block;
+      a, &:nth-child(even) a {
+        background-color: transparent;
+        color: #333;
+        line-height: 52px;
+      }
+      a:hover {
+      background-color: #fa0 !important;
+      color: #000;
+    }
+    }
+  }
+  @media screen and (min-width: 1200px){
+      display: inline-block;
+      float:left;
+    }
+}
+
+nav form {
+  display:block;
+  background-color: #222;
+  padding: 12px 12px 0px 12px;
+  position: relative;
+  input[type=text]{
+    box-sizing: border-box;
+    width: 100%;
+    border: 1px solid #666;
+    background-color: #222;
+    border-radius: 20px;
+    font: 14px/32px "Roboto", sans-serif;
+    color: #fff;
+    padding: 0 30px 0 20px;
+    transition: 100ms ease all;
+    &:focus{
+      border-radius: 2px;
+      background-color:#fc0;
+      color: #000;
+      ~input[type=submit]{
+        color: #000;
+      }
+    }
+  }
+  input[type=submit]{
+    background-color: transparent;
+    border: 0;
+    font: 14px/32px "FontAwesome";
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    width: 42px;
+    text-align: center;
+    color: #666;
+  }
+  @media screen and (min-width: 1200px){
+      display: inline-block;
+      float:right;
+      background-color: transparent;
+      padding: 0 10px;
+      line-height: 52px;
+      input[type=text]{
+        background-color: #fff;
+        color: #000;
+        border: 0 transparent none;
+        box-shadow: inset -1px 1px 5px #999;
+        &:focus{
+          background-color:#fff;
+          color: #000;
+          ~input[type=submit]{
+            color: #000;
+          }
+        }
+      }
+      input[type=submit]{
+        line-height: 52px;
+        top: 0;
+      }
+    }
+}
+
+.social-links {
+  background-color: #222;
+  color: #fff;
+  font: 14px/52px "FontAwesome";
+  text-align: center;
+  word-spacing: 15px;
+  li {
+    display: inline-block;
+    a{
+      display: block;
+      position: relative;
+      width: 32px;
+      line-height: 32px;
+      border-radius: 5px;
+      transition: 300ms ease all;
+      &:hover {
+        background-color: #fb0;
+        color: #222;
+      }
+    }
+  }
+  @media screen and (min-width: 1200px){
+      display: inline-block;
+      background-color: transparent;
+      color: #333;
+      float: right;
+      li a:hover {
+        background-color: #fa0;  
+      }
+      
+    }
+}
