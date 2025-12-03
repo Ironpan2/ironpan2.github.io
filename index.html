@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CODINGPROJECTV2.3_DEBUG</title>
+    <title>CODINGPROJECTV2.4_DEBUG</title>
     <style>
         body {
             display: flex;
@@ -107,7 +107,7 @@
             </div>
 
             <div class="shop-item" id="buyMachineGun">
-                Machine Gun (Fast Fire Rate)<br>Cost: 1000 points
+                Machine Gun (Fast Fire Rate)<br>Cost: 3000 points
             </div>
 
             <div class="shop-item" id="buyHeal">
@@ -157,7 +157,7 @@
             pistol: { id: 1, name: 'Pistol', damage: 20, speed: 8, fireRate: 300, pellets: 1, spread: 0, magSize: 12, reloadTime: 1000 },
             shotgun: { id: 2, name: 'Shotgun', damage: 30, speed: 7, fireRate: 1000, pellets: 5, spread: 0.3, magSize: 6, reloadTime: 1500 },
             sniper: { id: 3, name: 'Sniper', damage: 150, speed: 10, fireRate: 2500, pellets: 1, spread: 0, magSize: 3, reloadTime: 2000 },
-            machinegun:{ id: 4, name: 'Machine Gun', damage: 20, speed: 9, fireRate: 500, pellets: 1, spread: 0.1, magSize: 100, reloadTime: 1800 }
+            machinegun:{ id: 4, name: 'Machine Gun', damage: 20, speed: 9, fireRate: 50, pellets: 1, spread: 0.1, magSize: 100, reloadTime: 1800 }
         };
 
         let currentWeapon = weapons.pistol;
@@ -275,13 +275,13 @@
         function updateShopButtons() {
             buyShotgunBtn.classList.toggle('disabled', !(score >= 200 && !ownedWeapons.shotgun));
             buySniperBtn.classList.toggle('disabled', !(score >= 400 && !ownedWeapons.sniper));
-            buyMachineGunBtn.classList.toggle('disabled', !(score >= 1 && !ownedWeapons.machinegun));
+            buyMachineGunBtn.classList.toggle('disabled', !(score >= 3000 && !ownedWeapons.machinegun));
             buyHealBtn.classList.toggle('disabled', !(score >= 100 && player.currentHp < player.maxHp));
         }
 
         buyShotgunBtn.onclick = () => { if (score >= 200 && !ownedWeapons.shotgun) { score -= 200; ownedWeapons.shotgun = true; scoreDisplay.textContent = `Score: ${score}`; updateShopButtons(); } };
         buySniperBtn.onclick = () => { if (score >= 400 && !ownedWeapons.sniper) { score -= 400; ownedWeapons.sniper = true; scoreDisplay.textContent = `Score: ${score}`; updateShopButtons(); } };
-        buyMachineGunBtn.onclick = () => { if (score >= 1000 && !ownedWeapons.machinegun) { score -= 1000; ownedWeapons.machinegun = true; scoreDisplay.textContent = `Score: ${score}`; updateShopButtons(); } };
+        buyMachineGunBtn.onclick = () => { if (score >= 3000 && !ownedWeapons.machinegun) { score -= 3000; ownedWeapons.machinegun = true; scoreDisplay.textContent = `Score: ${score}`; updateShopButtons(); } };
         buyHealBtn.onclick = () => { if (score >= 100 && player.currentHp < player.maxHp) { score -= 100; player.currentHp = Math.min(player.maxHp, player.currentHp + 20); updateHpBar(); scoreDisplay.textContent = `Score: ${score}`; updateShopButtons(); } };
 
         // Enemy system
@@ -453,4 +453,5 @@
     </script>
 </body>
 </html>
-V2.3
+V2.4 Buffed Machine guns stats but made it cost more
+
