@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Slope G3me</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Courier New', Courier, monospace; }
+        canvas { display: block; }
+        
+        /* Back button to return to hub */
+        #back-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #fff;
+            text-decoration: none;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 10px;
+            border: 1px solid #fff;
+            z-index: 100;
+        }
+        #back-btn:hover { background: #fff; color: #000; }
+
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #00ffcc;
+            font-size: 24px;
+            text-shadow: 0 0 5px #00ffcc;
+            pointer-events: none;
+            z-index: 10;
+        }
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            text-align: center;
+            display: none;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 40px;
+            border: 2px solid #ff0055;
+            box-shadow: 0 0 30px #ff0055;
+            z-index: 20;
+        }
+        h1 { margin: 0 0 10px 0; font-size: 40px; color: #ff0055; text-shadow: 0 0 10px #ff0055; }
+        button {
+            background: #00ffcc;
+            border: none;
+            padding: 10px 20px;
+            font-size: 20px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+        button:hover { background: #fff; box-shadow: 0 0 15px #00ffcc; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <a href="index.html" id="back-btn">← BACK TO HUB</a>
+
+    <div id="ui-container">
+        SCORE: <span id="score">0</span>
+    </div>
+
+    <div id="game-over">
+        <h1>G3ME OVER</h1>
+        <p>Final Score: <span id="final-score">0</span></p>
+        <button onclick="resetGame()">RESTART G3ME</button>
+    </div>
+
+    <script>
+        // --- GAME LOGIC (Same as before) ---
+        let scene, camera, renderer, player;
+        let platforms = [], obstacles = [], debris = [];
+        let isGameOver = false, score = 0;
+        let speed = 0.6, speedIncrement = 0.0002, maxSpeed = 1.5;
+        let lastZ = 0, lastX = 0;
+        let playerVelocityX = 0, playerVelocityY = 0;
+        const gravity = 0.02, moveSpeed = 0.025, friction = 0.92;
+        let keys = { ArrowLeft: false, ArrowRight: false, a: false, d: false };
+
+        const COLOR_BG = 0x050505;
+        const COLOR_PLATFORM = 0x00ffcc; 
+        const COLOR_OBSTACLE = 0xff0055; 
+        const COLOR_PLAYER = 0xffffff;
+
+        init();
+        animate();
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(COLOR_BG);
+            scene.fog = new THREE.FogExp2(COLOR_BG, 0.015);
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 3, 7);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(10, 20, 10);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+            
+            const pGeo = new THREE.SphereGeometry(0.5, 32, 32);
+            const pMat = new THREE.MeshStandardMaterial({ color: COLOR_PLAYER, emissive: 0x111111, roughness: 0.1, metalness: 0.8 });
+            player = new THREE.Mesh(pGeo, pMat);
+            player.castShadow = true;
+            player.position.y = 1; 
+            scene.add(player);
+
+            createInitialPlatform();
+
+            window.addEventListener('resize', onWindowResize, false);
+            document.addEventListener('keydown', (e) => { if(keys.hasOwnProperty(e.key)) keys[e.key] = true; });
+            document.addEventListener('keyup', (e) => { if(keys.hasOwnProperty(e.key)) keys[e.key] = false; });
+        }
+
+        function createInitialPlatform() {
+            lastZ = 0; lastX = 0;
+            createPlatform(0, 0, 0, 10, 20);
+            lastZ = -10;
+            for(let i = 0; i < 20; i++) generateProceduralChunk();
+        }
+
+        function generateProceduralChunk() {
+            const width = Math.random() * 4 + 8;
+            const length = 10;
+            const maxShift = width / 2.5; 
+            const shift = (Math.random() - 0.5) * maxShift * 2; 
+            const newX = lastX + shift;
+            const newZ = lastZ - (length / 2);
+            createPlatform(newX, 0, newZ, width, length);
+            if (Math.random() > 0.4) {
+                const obsX = newX + (Math.random() - 0.5) * (width - 2); 
+                createObstacle(obsX, 1, newZ);
+            }
+            lastX = newX;
+            lastZ = newZ - (length / 2);
+        }
+
+        function createPlatform(x, y, z, width, depth) {
+            const geometry = new THREE.BoxGeometry(width, 1, depth);
+            const material = new THREE.MeshPhongMaterial({ color: COLOR_PLATFORM, shininess: 100, emissive: 0x002222 });
+            const platform = new THREE.Mesh(geometry, material);
+            platform.position.set(x, y - 0.5, z); 
+            platform.receiveShadow = true;
+            const edges = new THREE.EdgesGeometry(geometry);
+            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 }));
+            platform.add(line);
+            scene.add(platform);
+            platforms.push(platform);
+        }
+
+        function createObstacle(x, y, z) {
+            const geometry = new THREE.BoxGeometry(1, 1, 1);
+            const material = new THREE.MeshStandardMaterial({ color: COLOR_OBSTACLE, emissive: 0x550000 });
+            const obstacle = new THREE.Mesh(geometry, material);
+            obstacle.position.set(x, y, z);
+            obstacle.castShadow = true;
+            obstacle.receiveShadow = true;
+            scene.add(obstacle);
+            obstacles.push(obstacle);
+        }
+
+        function createExplosion(position) {
+            const geometry = new THREE.TetrahedronGeometry(0.3, 0);
+            const material = new THREE.MeshBasicMaterial({ color: COLOR_PLAYER });
+            for (let i = 0; i < 20; i++) {
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.copy(position);
+                mesh.userData.velocity = new THREE.Vector3((Math.random()-0.5)*0.8, (Math.random()-0.5)*0.8, (Math.random()-0.5)*0.8);
+                scene.add(mesh);
+                debris.push(mesh);
+            }
+        }
+
+        function resetGame() {
+            platforms.forEach(p => scene.remove(p));
+            obstacles.forEach(o => scene.remove(o));
+            debris.forEach(d => scene.remove(d));
+            platforms = []; obstacles = []; debris = [];
+            player.position.set(0, 1, 0);
+            playerVelocityX = 0; playerVelocityY = 0;
+            score = 0; speed = 0.6; isGameOver = false;
+            player.visible = true;
+            document.getElementById('game-over').style.display = 'none';
+            document.getElementById('score').innerText = '0';
+            createInitialPlatform();
+        }
+
+        function handleInput() {
+            if (keys.ArrowLeft || keys.a) playerVelocityX -= moveSpeed;
+            if (keys.ArrowRight || keys.d) playerVelocityX += moveSpeed;
+        }
+
+        function updatePhysics() {
+            player.position.z -= speed;
+            player.position.x += playerVelocityX;
+            playerVelocityX *= friction;
+            const raycaster = new THREE.Raycaster(player.position, new THREE.Vector3(0, -1, 0), 0, 1.5);
+            if (raycaster.intersectObjects(platforms).length > 0) {
+                playerVelocityY = 0; player.position.y = 0.5;
+            } else {
+                playerVelocityY -= gravity; player.position.y += playerVelocityY;
+            }
+            player.rotation.x -= speed * 0.5;
+            player.rotation.z = -playerVelocityX * 3;
+            if (player.position.y < -5) triggerGameOver();
+            for (let obs of obstacles) { if (player.position.distanceTo(obs.position) < 0.9) triggerGameOver(); }
+        }
+
+        function updateWorld() {
+            if(speed < maxSpeed) speed += speedIncrement;
+            score = Math.floor(Math.abs(player.position.z) / 10);
+            document.getElementById('score').innerText = score;
+            if (player.position.z < lastZ + 100) generateProceduralChunk();
+            if (platforms.length > 40) { const old = platforms.shift(); scene.remove(old); old.geometry.dispose(); old.material.dispose(); }
+            if (obstacles.length > 20 && obstacles[0].position.z > player.position.z + 20) { const old = obstacles.shift(); scene.remove(old); old.geometry.dispose(); old.material.dispose(); }
+        }
+
+        function triggerGameOver() {
+            if(isGameOver) return;
+            isGameOver = true;
+            createExplosion(player.position);
+            player.visible = false;
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('game-over').style.display = 'block';
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (!isGameOver) {
+                handleInput(); updatePhysics(); updateWorld();
+                camera.position.z = player.position.z + 8;
+                camera.position.x = (player.position.x * 0.4) + (camera.position.x * 0.6);
+                camera.lookAt(player.position.x, player.position.y, player.position.z - 10);
+            } else {
+                debris.forEach(p => { p.position.add(p.userData.velocity); p.rotation.x += 0.1; });
+            }
+            renderer.render(scene, camera);
+        }
+        function onWindowResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
+    </script>
+</body>
+</html>
