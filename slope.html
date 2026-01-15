@@ -111,21 +111,21 @@
             // 1. Scene & Camera
             scene = new THREE.Scene();
             scene.background = new THREE.Color(CONFIG.colorBg);
-            scene.fog = new THREE.FogExp2(CONFIG.colorBg, 0.02); // Thicker fog for neon contrast
+            scene.fog = new THREE.FogExp2(CONFIG.colorBg, 0.02); 
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            // Initial position, will be overridden in animate loop
             camera.position.set(0, 3, 7);
 
             // 2. Renderer
-            renderer = new THREE.WebGLRenderer({ antialias: false }); // Antialias off for performance with Bloom
+            renderer = new THREE.WebGLRenderer({ antialias: false }); 
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
             renderer.toneMapping = THREE.ReinhardToneMapping;
             document.body.appendChild(renderer.domElement);
 
-            // 3. Post-Processing (The "Glow" Effect)
+            // 3. Post-Processing
             const renderScene = new RenderPass(scene, camera);
-            
             const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
             bloomPass.threshold = CONFIG.bloomThreshold;
             bloomPass.strength = CONFIG.bloomStrength;
@@ -137,14 +137,12 @@
 
             // 4. Lights
             scene.add(new THREE.AmbientLight(0xffffff, 0.1));
-            // A light following the player
             const playerLight = new THREE.PointLight(CONFIG.colorPlatform, 1, 20);
             playerLight.position.set(0, 5, 0);
             scene.add(playerLight);
 
             // 5. Player
-            const pGeo = new THREE.OctahedronGeometry(0.5); // Octahedron looks more "tech"
-            // High emissive value makes it glow with the bloom pass
+            const pGeo = new THREE.OctahedronGeometry(0.5); 
             const pMat = new THREE.MeshStandardMaterial({ 
                 color: 0xffffff, 
                 emissive: 0x00ffff, 
@@ -155,8 +153,6 @@
             player = new THREE.Mesh(pGeo, pMat);
             player.position.y = 1;
             scene.add(player);
-
-            // Player trailing light
             player.add(new THREE.PointLight(0x00ffff, 2, 10));
 
             createInitialPlatform();
@@ -170,7 +166,7 @@
 
         function createInitialPlatform() {
             lastZ = 0; lastX = 0;
-            createPlatform(0, 0, 0, 10, 20); // Start platform
+            createPlatform(0, 0, 0, 10, 20);
             lastZ = -10;
             for(let i = 0; i < 15; i++) generateProceduralChunk();
         }
@@ -185,7 +181,6 @@
 
             createPlatform(newX, 0, newZ, width, length);
 
-            // Chance to spawn obstacle
             if (Math.random() > 0.3) {
                 const obsX = newX + (Math.random() - 0.5) * (width - 2); 
                 createObstacle(obsX, 1, newZ);
@@ -196,7 +191,6 @@
         }
 
         function createPlatform(x, y, z, width, depth) {
-            // Main block
             const geometry = new THREE.BoxGeometry(width, 1, depth);
             const material = new THREE.MeshStandardMaterial({ 
                 color: 0x000000, 
@@ -206,12 +200,9 @@
             const platform = new THREE.Mesh(geometry, material);
             platform.position.set(x, y - 0.5, z);
             
-            // Neon Edges (This creates the grid look)
             const edges = new THREE.EdgesGeometry(geometry);
             const lineMat = new THREE.LineBasicMaterial({ color: CONFIG.colorPlatform });
             const lines = new THREE.LineSegments(edges, lineMat);
-            
-            // Make lines glow
             lines.material.color.setHex(CONFIG.colorPlatform); 
             
             platform.add(lines);
@@ -224,13 +215,11 @@
             const material = new THREE.MeshStandardMaterial({ 
                 color: 0x000000,
                 emissive: CONFIG.colorObstacle,
-                emissiveIntensity: 2.0, // Super bright red glow
+                emissiveIntensity: 2.0, 
                 roughness: 0.1
             });
             const obstacle = new THREE.Mesh(geometry, material);
             obstacle.position.set(x, y, z);
-            
-            // Random rotation for cool look
             obstacle.rotation.x = Math.random();
             obstacle.rotation.y = Math.random();
 
@@ -245,8 +234,6 @@
             for (let i = 0; i < 30; i++) {
                 const mesh = new THREE.Mesh(geometry, material);
                 mesh.position.copy(position);
-                
-                // Explode outwards
                 mesh.userData.velocity = new THREE.Vector3(
                     (Math.random()-0.5) * 1.5,
                     (Math.random()-0.5) * 1.5,
@@ -293,7 +280,6 @@
             player.position.x += playerVelocityX;
             playerVelocityX *= friction;
 
-            // Simple Raycast for ground detection
             const raycaster = new THREE.Raycaster(player.position, new THREE.Vector3(0, -1, 0), 0, 1.5);
             const hits = raycaster.intersectObjects(platforms);
 
@@ -305,11 +291,9 @@
                 player.position.y += playerVelocityY;
             }
 
-            // Rolling animation
             player.rotation.x -= speed * 0.3;
             player.rotation.z = -playerVelocityX * 2;
 
-            // Death Conditions
             if (player.position.y < -5) triggerGameOver();
             
             for (let obs of obstacles) { 
@@ -323,14 +307,11 @@
             score = Math.floor(Math.abs(player.position.z) / 10);
             document.getElementById('score').innerText = score;
 
-            // Generate new track
             if (player.position.z < lastZ + 120) generateProceduralChunk();
 
-            // Cleanup old track to save memory
             if (platforms.length > 45) { 
                 const old = platforms.shift(); 
                 scene.remove(old); 
-                // Important to dispose geometries in Three.js
                 old.geometry.dispose();
                 if(old.material) old.material.dispose();
             }
@@ -357,9 +338,13 @@
                 updatePhysics();
                 updateWorld();
 
-                // Camera Follow
-                camera.position.z = player.position.z + 8;
-                camera.position.x += (player.position.x * 0.5 - camera.position.x) * 0.1; // Smooth lerp
+                // --- CAMERA FIX: PERFECTLY BEHIND ---
+                // We hard-lock the camera position to the player's X and Y
+                camera.position.x = player.position.x; 
+                camera.position.y = player.position.y + 2.5; // Stay slightly above player
+                camera.position.z = player.position.z + 7;   // Stay fixed distance behind
+                
+                // Look slightly ahead
                 camera.lookAt(player.position.x, player.position.y, player.position.z - 10);
                 
                 // Rotate obstacles
@@ -369,15 +354,13 @@
                 });
 
             } else {
-                // Debris animation
                 debris.forEach(p => { 
                     p.position.add(p.userData.velocity); 
                     p.rotation.x += 0.1; 
-                    p.scale.multiplyScalar(0.95); // shrink
+                    p.scale.multiplyScalar(0.95); 
                 });
             }
 
-            // USE COMPOSER INSTEAD OF RENDERER
             composer.render();
         }
 
