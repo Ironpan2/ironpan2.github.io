@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neon Dash G3me v2</title>
+    <title>Neon Dash G3me v2 (Fixed)</title>
     <style>
         body {
             margin: 0;
@@ -163,7 +163,6 @@
         // --- SPAWNING LOGIC ---
         function spawnPattern() {
             // Ensure we don't spawn if the last object is still entering the screen
-            // This prevents overlapping
             if (obstacles.length > 0) {
                 const lastObs = obstacles[obstacles.length - 1];
                 if (lastObs.x > WIDTH - 150) return; // Wait for gap
@@ -173,14 +172,15 @@
             const startX = WIDTH + 50;
 
             // Geometry Dash Style Patterns
+            // FIX: We now subtract GRID_SIZE from y for spikes to bring them UP to the surface
             if (r < 0.25) {
                 // 1. Single Spike
-                addSpike(startX, GROUND_Y);
+                addSpike(startX, GROUND_Y - GRID_SIZE); 
             } 
             else if (r < 0.45) {
                 // 2. Double Spike
-                addSpike(startX, GROUND_Y);
-                addSpike(startX + GRID_SIZE, GROUND_Y);
+                addSpike(startX, GROUND_Y - GRID_SIZE);
+                addSpike(startX + GRID_SIZE, GROUND_Y - GRID_SIZE);
             }
             else if (r < 0.65) {
                 // 3. Single Block (Jump over or land on)
@@ -208,7 +208,7 @@
         }
 
         function addSpike(x, y) {
-            // Spikes originate from bottom-left
+            // Spikes now use Top-Left coordinates for collision, just like blocks
             obstacles.push({ x: x, y: y, w: GRID_SIZE, h: GRID_SIZE, type: 'spike' });
         }
 
@@ -222,7 +222,6 @@
             if (frameCount % 600 === 0 && gameSpeed < 11) gameSpeed += 0.5;
 
             // Spawn Controller
-            // Randomly try to spawn, but spawnPattern handles "No Overlap" logic
             if (Math.random() < 0.05 + (gameSpeed/200)) { 
                 spawnPattern();
             }
@@ -256,8 +255,6 @@
                     else if (obs.type === 'block') {
                         // BLOCK LOGIC: Land or Crash?
                         
-                        // We calculate the "previous" position (approx) to see where we came from
-                        // If center of player was ABOVE the block top, we land.
                         const playerBottom = player.y + player.size;
                         const blockTop = obs.y;
                         const tolerance = 15; // Pixels of forgiveness
@@ -295,7 +292,7 @@
         }
 
         function rectIntersect(x1, y1, w1, h1, x2, y2, w2, h2) {
-            // Shrink hitboxes slightly (by 4px) to be forgiving
+            // Shrink hitboxes slightly (by 6px) to be forgiving
             const padding = 6; 
             return x2 < x1 + w1 - padding && 
                    x2 + w2 > x1 + padding && 
@@ -325,9 +322,13 @@
             ctx.strokeStyle = color;
             ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.moveTo(x, y); // Bottom Left
-            ctx.lineTo(x + w / 2, y - h); // Top Center
-            ctx.lineTo(x + w, y); // Bottom Right
+            
+            // FIX: Draw triangle based on Top-Left Coordinate system
+            // x, y is now the TOP-LEFT of the invisible hit box
+            ctx.moveTo(x, y + h); // Bottom Left
+            ctx.lineTo(x + w / 2, y); // Top Center
+            ctx.lineTo(x + w, y + h); // Bottom Right
+            
             ctx.closePath();
             ctx.stroke();
             
