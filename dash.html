@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neon Dash G3me</title>
+    <title>Neon Dash G3me v2</title>
     <style>
         body {
             margin: 0;
@@ -21,7 +21,6 @@
             background: #0a0a0a;
         }
         
-        /* Back button to return to hub */
         #back-btn {
             position: absolute;
             top: 20px;
@@ -86,7 +85,7 @@
     <div id="game-over">
         <h1>CRASHED</h1>
         <p>Final Score: <span id="final-score">0</span></p>
-        <button onclick="resetGame()">RESTART G3ME</button>
+        <button onclick="resetGame()">RETRY LEVEL</button>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -95,7 +94,6 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // Set canvas dimensions nicely within the window
         const WIDTH = 800;
         const HEIGHT = 400;
         canvas.width = WIDTH;
@@ -104,20 +102,23 @@
         // --- CONFIG ---
         const COLOR_NEON_BLUE = '#00ffcc';
         const COLOR_NEON_RED = '#ff0055';
+        const GROUND_Y = HEIGHT - 50;
+        const GRID_SIZE = 40; // Size of all blocks/spikes for consistency
+
         let gameRunning = false;
         let score = 0;
         let frameCount = 0;
-        let gameSpeed = 5;
-        const GROUND_Y = HEIGHT - 50;
+        let gameSpeed = 6;
+        let spawnTimer = 0;
 
-        // Player Object
+        // Player
         let player = {
-            x: 50,
-            y: GROUND_Y - 30,
-            size: 30,
+            x: 100, // Fixed X position
+            y: GROUND_Y - GRID_SIZE,
+            size: 30, // Slightly smaller than grid to prevent clipping bugs
             dy: 0,
-            jumpPower: -12,
-            gravity: 0.6,
+            jumpPower: -13,
+            gravity: 0.8, // Heavy gravity for snappy feel
             grounded: false,
             rotation: 0
         };
@@ -125,15 +126,15 @@
         let obstacles = [];
 
         function init() {
-            // Input handlers
             document.addEventListener('keydown', handleInput);
-            canvas.addEventListener('click', jump);
+            document.addEventListener('mousedown', jump);
             resetGame();
             gameLoop();
         }
 
         function handleInput(e) {
             if (e.code === 'Space' || e.code === 'ArrowUp') {
+                e.preventDefault(); // Stop scrolling
                 jump();
             }
         }
@@ -152,23 +153,63 @@
             obstacles = [];
             score = 0;
             frameCount = 0;
-            gameSpeed = 5;
+            gameSpeed = 6;
+            spawnTimer = 0;
             gameRunning = true;
             document.getElementById('game-over').style.display = 'none';
             document.getElementById('score').innerText = '0';
         }
 
-        function spawnObstacle() {
-            // Random size between 20 and 40
-            const size = Math.floor(Math.random() * 20) + 20;
-            let type = Math.random() > 0.5 ? 'square' : 'triangle';
-            
-            obstacles.push({
-                x: WIDTH + size,
-                y: GROUND_Y - size,
-                size: size,
-                type: type
-            });
+        // --- SPAWNING LOGIC ---
+        function spawnPattern() {
+            // Ensure we don't spawn if the last object is still entering the screen
+            // This prevents overlapping
+            if (obstacles.length > 0) {
+                const lastObs = obstacles[obstacles.length - 1];
+                if (lastObs.x > WIDTH - 150) return; // Wait for gap
+            }
+
+            const r = Math.random();
+            const startX = WIDTH + 50;
+
+            // Geometry Dash Style Patterns
+            if (r < 0.25) {
+                // 1. Single Spike
+                addSpike(startX, GROUND_Y);
+            } 
+            else if (r < 0.45) {
+                // 2. Double Spike
+                addSpike(startX, GROUND_Y);
+                addSpike(startX + GRID_SIZE, GROUND_Y);
+            }
+            else if (r < 0.65) {
+                // 3. Single Block (Jump over or land on)
+                addBlock(startX, GROUND_Y - GRID_SIZE);
+            }
+            else if (r < 0.8) {
+                // 4. Double Block (Platform)
+                addBlock(startX, GROUND_Y - GRID_SIZE);
+                addBlock(startX + GRID_SIZE, GROUND_Y - GRID_SIZE);
+            }
+            else if (r < 0.9) {
+                // 5. Block with Spike on top
+                addBlock(startX, GROUND_Y - GRID_SIZE);
+                addSpike(startX, GROUND_Y - GRID_SIZE * 2);
+            }
+            else {
+                // 6. Staircase (2 blocks)
+                addBlock(startX, GROUND_Y - GRID_SIZE);
+                addBlock(startX + GRID_SIZE, GROUND_Y - GRID_SIZE * 2);
+            }
+        }
+
+        function addBlock(x, y) {
+            obstacles.push({ x: x, y: y, w: GRID_SIZE, h: GRID_SIZE, type: 'block' });
+        }
+
+        function addSpike(x, y) {
+            // Spikes originate from bottom-left
+            obstacles.push({ x: x, y: y, w: GRID_SIZE, h: GRID_SIZE, type: 'spike' });
         }
 
         function update() {
@@ -177,103 +218,164 @@
             score = Math.floor(frameCount / 10);
             document.getElementById('score').innerText = score;
 
-            // Increase speed slowly
-            if(frameCount % 500 === 0) gameSpeed += 0.5;
+            // Speed up slightly over time
+            if (frameCount % 600 === 0 && gameSpeed < 11) gameSpeed += 0.5;
+
+            // Spawn Controller
+            // Randomly try to spawn, but spawnPattern handles "No Overlap" logic
+            if (Math.random() < 0.05 + (gameSpeed/200)) { 
+                spawnPattern();
+            }
 
             // Player Physics
             player.dy += player.gravity;
             player.y += player.dy;
 
-            // Ground Collision
+            // --- COLLISION & LANDING LOGIC ---
+            player.grounded = false; // Assume in air, prove otherwise
+
+            // Check Ground (Floor)
             if (player.y + player.size >= GROUND_Y) {
                 player.y = GROUND_Y - player.size;
                 player.dy = 0;
                 player.grounded = true;
-                // Snap rotation back to flat when on ground
-                player.rotation = Math.round(player.rotation / (Math.PI / 2)) * (Math.PI / 2);
-            } else {
-                // Spin while jumping
-                player.rotation += 0.05;
             }
 
-            // Obstacle Management
-            // Spawn obstacles randomly (approx every 60-120 frames)
-            if (frameCount % (Math.floor(Math.random() * 60) + 60) === 0) {
-                spawnObstacle();
-            }
-
+            // Check Obstacles
             for (let i = obstacles.length - 1; i >= 0; i--) {
                 let obs = obstacles[i];
                 obs.x -= gameSpeed;
 
-                // Collision Detection (Simple AABB bounding box)
-                // Shrink hitboxes slightly (by 4px) to be forgiving
-                if (player.x < obs.x + obs.size - 4 &&
-                    player.x + player.size > obs.x + 4 &&
-                    player.y < obs.y + obs.size - 4 &&
-                    player.y + player.size > obs.y + 4) {
-                    triggerGameOver();
+                // 1. Broad Phase: Are we even touching? (AABB)
+                if (rectIntersect(player.x, player.y, player.size, player.size, obs.x, obs.y, obs.w, obs.h)) {
+                    
+                    if (obs.type === 'spike') {
+                        // Spikes are instant death
+                        triggerGameOver();
+                    } 
+                    else if (obs.type === 'block') {
+                        // BLOCK LOGIC: Land or Crash?
+                        
+                        // We calculate the "previous" position (approx) to see where we came from
+                        // If center of player was ABOVE the block top, we land.
+                        const playerBottom = player.y + player.size;
+                        const blockTop = obs.y;
+                        const tolerance = 15; // Pixels of forgiveness
+
+                        // Condition to land:
+                        // 1. Falling downwards (dy >= 0)
+                        // 2. The player's feet are close to the top
+                        // 3. The player was previously above the block (heuristic)
+                        if (player.dy >= 0 && playerBottom <= blockTop + tolerance + player.dy) {
+                            // LANDED ON TOP
+                            player.y = blockTop - player.size;
+                            player.dy = 0;
+                            player.grounded = true;
+                        } else {
+                            // HIT THE SIDE OR BOTTOM -> CRASH
+                            triggerGameOver();
+                        }
+                    }
                 }
 
-                // Remove off-screen obstacles
-                if (obs.x + obs.size < 0) {
+                // Remove off-screen
+                if (obs.x + obs.w < -100) {
                     obstacles.splice(i, 1);
                 }
             }
+
+            // Rotation Visuals
+            if (player.grounded) {
+                // Snap to nearest 90 degrees (PI/2)
+                let target = Math.round(player.rotation / (Math.PI / 2)) * (Math.PI / 2);
+                player.rotation = target;
+            } else {
+                player.rotation += 0.12; // Spin faster
+            }
         }
 
-        function drawNeonRect(x, y, w, h, color) {
-            ctx.shadowBlur = 15;
+        function rectIntersect(x1, y1, w1, h1, x2, y2, w2, h2) {
+            // Shrink hitboxes slightly (by 4px) to be forgiving
+            const padding = 6; 
+            return x2 < x1 + w1 - padding && 
+                   x2 + w2 > x1 + padding && 
+                   y2 < y1 + h1 - padding && 
+                   y2 + h2 > y1 + padding;
+        }
+
+        function drawNeonRect(x, y, w, h, color, fill = false) {
+            ctx.shadowBlur = 10;
             ctx.shadowColor = color;
             ctx.strokeStyle = color;
+            ctx.fillStyle = color;
             ctx.lineWidth = 3;
-            ctx.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3); // Offset for crisp lines
-            ctx.shadowBlur = 0; // Reset shadow
+            
+            if (fill) {
+                ctx.globalAlpha = 0.2;
+                ctx.fillRect(x, y, w, h);
+                ctx.globalAlpha = 1.0;
+            }
+            ctx.strokeRect(x, y, w, h);
+            ctx.shadowBlur = 0;
         }
-        
-        function drawNeonTriangle(x, y, size, color) {
-            ctx.shadowBlur = 15;
+
+        function drawNeonTriangle(x, y, w, h, color) {
+            ctx.shadowBlur = 10;
             ctx.shadowColor = color;
             ctx.strokeStyle = color;
             ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.moveTo(x, y + size); // Bottom left
-            ctx.lineTo(x + size / 2, y); // Top center
-            ctx.lineTo(x + size, y + size); // Bottom right
+            ctx.moveTo(x, y); // Bottom Left
+            ctx.lineTo(x + w / 2, y - h); // Top Center
+            ctx.lineTo(x + w, y); // Bottom Right
             ctx.closePath();
             ctx.stroke();
+            
+            // Inner glow
+            ctx.fillStyle = color;
+            ctx.globalAlpha = 0.2;
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
             ctx.shadowBlur = 0;
         }
 
         function draw() {
-            // Clear screen
+            // Clear Background
             ctx.fillStyle = '#0a0a0a';
             ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-            // Draw Ground Line (handled by CSS border, but let's add a glow line)
+            // Draw Floor Line
             ctx.beginPath();
             ctx.moveTo(0, GROUND_Y);
             ctx.lineTo(WIDTH, GROUND_Y);
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = COLOR_NEON_BLUE;
             ctx.strokeStyle = COLOR_NEON_BLUE;
             ctx.lineWidth = 2;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = COLOR_NEON_BLUE;
             ctx.stroke();
             ctx.shadowBlur = 0;
 
-            // Draw Player (with rotation)
+            // Draw Player
             ctx.save();
             ctx.translate(player.x + player.size / 2, player.y + player.size / 2);
             ctx.rotate(player.rotation);
-            drawNeonRect(-player.size / 2, -player.size / 2, player.size, player.size, COLOR_NEON_BLUE);
+            drawNeonRect(-player.size / 2, -player.size / 2, player.size, player.size, COLOR_NEON_BLUE, true);
             ctx.restore();
 
             // Draw Obstacles
             obstacles.forEach(obs => {
-                if(obs.type === 'square') {
-                    drawNeonRect(obs.x, obs.y, obs.size, obs.size, COLOR_NEON_RED);
+                if (obs.type === 'block') {
+                    drawNeonRect(obs.x, obs.y, obs.w, obs.h, COLOR_NEON_RED, true);
+                    // Add X inside block for detail
+                    ctx.beginPath();
+                    ctx.strokeStyle = '#550022';
+                    ctx.moveTo(obs.x, obs.y);
+                    ctx.lineTo(obs.x + obs.w, obs.y + obs.h);
+                    ctx.moveTo(obs.x + obs.w, obs.y);
+                    ctx.lineTo(obs.x, obs.y + obs.h);
+                    ctx.stroke();
                 } else {
-                     drawNeonTriangle(obs.x, obs.y, obs.size, COLOR_NEON_RED);
+                    drawNeonTriangle(obs.x, obs.y, obs.w, obs.h, COLOR_NEON_RED);
                 }
             });
         }
@@ -290,9 +392,7 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // Start game
         init();
-
     </script>
 </body>
 </html>
