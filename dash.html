@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Dash G3me</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050505;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            border-bottom: 2px solid #00ffcc;
+            box-shadow: 0 10px 20px -10px #00ffcc;
+            background: #0a0a0a;
+        }
+        
+        /* Back button to return to hub */
+        #back-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #fff;
+            text-decoration: none;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 10px;
+            border: 1px solid #fff;
+            z-index: 100;
+            font-weight: bold;
+        }
+        #back-btn:hover { background: #fff; color: #000; }
+
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #00ffcc;
+            font-size: 24px;
+            text-shadow: 0 0 5px #00ffcc;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            text-align: center;
+            display: none;
+            background: rgba(0, 0, 0, 0.95);
+            padding: 40px;
+            border: 2px solid #ff0055;
+            box-shadow: 0 0 30px #ff0055;
+            z-index: 20;
+        }
+        h1 { margin: 0 0 10px 0; font-size: 40px; color: #ff0055; text-shadow: 0 0 10px #ff0055; }
+        button {
+            background: #00ffcc;
+            border: none;
+            padding: 10px 20px;
+            font-size: 20px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+        button:hover { background: #fff; box-shadow: 0 0 15px #00ffcc; color: #000;}
+    </style>
+</head>
+<body>
+
+    <a href="index.html" id="back-btn">← BACK TO HUB</a>
+
+    <div id="ui-container">
+        SCORE: <span id="score">0</span>
+    </div>
+
+    <div id="game-over">
+        <h1>CRASHED</h1>
+        <p>Final Score: <span id="final-score">0</span></p>
+        <button onclick="resetGame()">RESTART G3ME</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Set canvas dimensions nicely within the window
+        const WIDTH = 800;
+        const HEIGHT = 400;
+        canvas.width = WIDTH;
+        canvas.height = HEIGHT;
+
+        // --- CONFIG ---
+        const COLOR_NEON_BLUE = '#00ffcc';
+        const COLOR_NEON_RED = '#ff0055';
+        let gameRunning = false;
+        let score = 0;
+        let frameCount = 0;
+        let gameSpeed = 5;
+        const GROUND_Y = HEIGHT - 50;
+
+        // Player Object
+        let player = {
+            x: 50,
+            y: GROUND_Y - 30,
+            size: 30,
+            dy: 0,
+            jumpPower: -12,
+            gravity: 0.6,
+            grounded: false,
+            rotation: 0
+        };
+
+        let obstacles = [];
+
+        function init() {
+            // Input handlers
+            document.addEventListener('keydown', handleInput);
+            canvas.addEventListener('click', jump);
+            resetGame();
+            gameLoop();
+        }
+
+        function handleInput(e) {
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                jump();
+            }
+        }
+
+        function jump() {
+            if (player.grounded && gameRunning) {
+                player.dy = player.jumpPower;
+                player.grounded = false;
+            }
+        }
+
+        function resetGame() {
+            player.y = GROUND_Y - player.size;
+            player.dy = 0;
+            player.rotation = 0;
+            obstacles = [];
+            score = 0;
+            frameCount = 0;
+            gameSpeed = 5;
+            gameRunning = true;
+            document.getElementById('game-over').style.display = 'none';
+            document.getElementById('score').innerText = '0';
+        }
+
+        function spawnObstacle() {
+            // Random size between 20 and 40
+            const size = Math.floor(Math.random() * 20) + 20;
+            let type = Math.random() > 0.5 ? 'square' : 'triangle';
+            
+            obstacles.push({
+                x: WIDTH + size,
+                y: GROUND_Y - size,
+                size: size,
+                type: type
+            });
+        }
+
+        function update() {
+            if (!gameRunning) return;
+            frameCount++;
+            score = Math.floor(frameCount / 10);
+            document.getElementById('score').innerText = score;
+
+            // Increase speed slowly
+            if(frameCount % 500 === 0) gameSpeed += 0.5;
+
+            // Player Physics
+            player.dy += player.gravity;
+            player.y += player.dy;
+
+            // Ground Collision
+            if (player.y + player.size >= GROUND_Y) {
+                player.y = GROUND_Y - player.size;
+                player.dy = 0;
+                player.grounded = true;
+                // Snap rotation back to flat when on ground
+                player.rotation = Math.round(player.rotation / (Math.PI / 2)) * (Math.PI / 2);
+            } else {
+                // Spin while jumping
+                player.rotation += 0.05;
+            }
+
+            // Obstacle Management
+            // Spawn obstacles randomly (approx every 60-120 frames)
+            if (frameCount % (Math.floor(Math.random() * 60) + 60) === 0) {
+                spawnObstacle();
+            }
+
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                let obs = obstacles[i];
+                obs.x -= gameSpeed;
+
+                // Collision Detection (Simple AABB bounding box)
+                // Shrink hitboxes slightly (by 4px) to be forgiving
+                if (player.x < obs.x + obs.size - 4 &&
+                    player.x + player.size > obs.x + 4 &&
+                    player.y < obs.y + obs.size - 4 &&
+                    player.y + player.size > obs.y + 4) {
+                    triggerGameOver();
+                }
+
+                // Remove off-screen obstacles
+                if (obs.x + obs.size < 0) {
+                    obstacles.splice(i, 1);
+                }
+            }
+        }
+
+        function drawNeonRect(x, y, w, h, color) {
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = color;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3); // Offset for crisp lines
+            ctx.shadowBlur = 0; // Reset shadow
+        }
+        
+        function drawNeonTriangle(x, y, size, color) {
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = color;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(x, y + size); // Bottom left
+            ctx.lineTo(x + size / 2, y); // Top center
+            ctx.lineTo(x + size, y + size); // Bottom right
+            ctx.closePath();
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+
+        function draw() {
+            // Clear screen
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+            // Draw Ground Line (handled by CSS border, but let's add a glow line)
+            ctx.beginPath();
+            ctx.moveTo(0, GROUND_Y);
+            ctx.lineTo(WIDTH, GROUND_Y);
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = COLOR_NEON_BLUE;
+            ctx.strokeStyle = COLOR_NEON_BLUE;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // Draw Player (with rotation)
+            ctx.save();
+            ctx.translate(player.x + player.size / 2, player.y + player.size / 2);
+            ctx.rotate(player.rotation);
+            drawNeonRect(-player.size / 2, -player.size / 2, player.size, player.size, COLOR_NEON_BLUE);
+            ctx.restore();
+
+            // Draw Obstacles
+            obstacles.forEach(obs => {
+                if(obs.type === 'square') {
+                    drawNeonRect(obs.x, obs.y, obs.size, obs.size, COLOR_NEON_RED);
+                } else {
+                     drawNeonTriangle(obs.x, obs.y, obs.size, COLOR_NEON_RED);
+                }
+            });
+        }
+
+        function triggerGameOver() {
+            gameRunning = false;
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('game-over').style.display = 'block';
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start game
+        init();
+
+    </script>
+</body>
+</html>
