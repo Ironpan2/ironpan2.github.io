@@ -3,42 +3,269 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>G3ME HUB</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Neon G3me Hub</title>
+    <style>
+        :root {
+            --neon-blue: #00ffcc;
+            --neon-pink: #ff0055;
+            --neon-green: #00ff00;
+            --bg-color: #050505;
+            --card-bg: #0a0a0a;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* HEADER & TITLE */
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 4rem;
+            margin: 0;
+            text-shadow: 0 0 10px var(--neon-blue), 0 0 20px var(--neon-blue);
+            color: #fff;
+            letter-spacing: 2px;
+        }
+
+        p.subtitle {
+            color: var(--neon-pink);
+            font-size: 1.2rem;
+            text-shadow: 0 0 5px var(--neon-pink);
+            margin-top: 5px;
+        }
+
+        /* SEARCH BAR */
+        .search-container {
+            margin-bottom: 40px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        #searchBar {
+            width: 100%;
+            padding: 15px 20px;
+            font-size: 18px;
+            background-color: #111;
+            border: 2px solid #333;
+            border-radius: 30px;
+            color: var(--neon-blue);
+            font-family: inherit;
+            outline: none;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        #searchBar::placeholder {
+            color: #555;
+        }
+
+        #searchBar:focus {
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+
+        /* GRID LAYOUT */
+        .g3me-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        /* GAME CARDS */
+        .g3me-card {
+            background-color: var(--card-bg);
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .g3me-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
+        }
+
+        .card-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .g3me-card h2 {
+            margin: 10px 0;
+            color: #fff;
+            font-size: 1.8rem;
+        }
+
+        .g3me-card p {
+            color: #aaa;
+            font-size: 0.9rem;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        /* PLAY BUTTONS */
+        .play-btn {
+            display: inline-block;
+            padding: 10px 30px;
+            background: transparent;
+            border: 2px solid var(--neon-blue);
+            color: var(--neon-blue);
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .play-btn:hover {
+            background: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+
+        /* Dash: Pink Theme */
+        .g3me-card:nth-child(1) .play-btn {
+            border-color: var(--neon-pink);
+            color: var(--neon-pink);
+        }
+        .g3me-card:nth-child(1):hover {
+            border-color: var(--neon-pink);
+            box-shadow: 0 0 20px rgba(255, 0, 85, 0.3);
+        }
+        .g3me-card:nth-child(1) .play-btn:hover {
+            background: var(--neon-pink);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-pink);
+        }
+
+        /* Slope: Green Theme */
+        .g3me-card:nth-child(3) .play-btn {
+            border-color: var(--neon-green);
+            color: var(--neon-green);
+        }
+        .g3me-card:nth-child(3):hover {
+            border-color: var(--neon-green);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        }
+        .g3me-card:nth-child(3) .play-btn:hover {
+            background: var(--neon-green);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-green);
+        }
+
+        footer {
+            margin-top: 50px;
+            color: #555;
+            font-size: 0.8rem;
+        }
+        
+        /* Message when no games match */
+        #no-results {
+            display: none;
+            color: #555;
+            font-size: 1.5rem;
+            margin-top: 20px;
+        }
+
+    </style>
 </head>
 <body>
 
-    <div class="header">
+    <header>
         <h1>NEON G3ME HUB</h1>
-        <p>Select a g3me to start playing</p>
+        <p class="subtitle">SELECT YOUR CHALLENGE</p>
+    </header>
+
+    <div class="search-container">
+        <input type="text" id="searchBar" onkeyup="searchGames()" placeholder="Search game titles...">
     </div>
 
-    <div class="g3me-container">
+    <div class="g3me-grid" id="gameGrid">
+        
         <div class="g3me-card">
-            <div class="card-icon">⚡</div>
+            <div class="card-icon">🔺</div>
+            <h2>NEON DASH</h2>
+            <p>Jump, fly, and dodge spikes in this rhythm-based platformer.</p>
+            <a href="dash.html" class="play-btn">PLAY G3ME</a>
+        </div>
+
+        <div class="g3me-card">
+            <div class="card-icon">🔫</div>
+            <h2>NEON BLAST</h2>
+            <p>Survive the waves. Upgrade guns. Neon chaos.</p>
+            <a href="neonblast.html" class="play-btn">PLAY G3ME</a>
+        </div>
+
+        <div class="g3me-card">
+            <div class="card-icon">🟢</div>
             <h2>NEON SLOPE</h2>
-            <p>Roll through the infinite cyber city. Don't fall.</p>
+            <p>Roll down the infinite cyber city. Avoid the red zones.</p>
             <a href="slope.html" class="play-btn">PLAY G3ME</a>
         </div>
 
-        <div class="g3me-card">
-            <div class="card-icon">🔲</div>
-            <h2>NEON DASH</h2>
-            <p>Jump over obstacles in this cyber side-scroller.</p>
-            <a href="dash.html" class="play-btn">PLAY G3ME</a>
-        </div>
-        
-        <div class="g3me-card locked">
-            <div class="card-icon">🔒</div>
-            <h2>COMING SOON</h2>
-            <p>More g3mes are being developed.</p>
-            <button class="play-btn" disabled>LOCKED</button>
-        </div>
     </div>
 
+    <div id="no-results">NO GAMES FOUND</div>
+
     <footer>
-        <p>Hosted on GitHub Pages | New g3mes added weekly</p>
+        &copy; 2024 NEON ARCADE SYSTEMS
     </footer>
+
+    <script>
+        function searchGames() {
+            // 1. Get the input value
+            let input = document.getElementById('searchBar');
+            let filter = input.value.toUpperCase();
+            
+            // 2. Get the grid and cards
+            let grid = document.getElementById('gameGrid');
+            let cards = grid.getElementsByClassName('g3me-card');
+            let visibleCount = 0;
+
+            // 3. Loop through all cards
+            for (let i = 0; i < cards.length; i++) {
+                let h2 = cards[i].getElementsByTagName("h2")[0];
+                if (h2) {
+                    let txtValue = h2.textContent || h2.innerText;
+                    
+                    // 4. Check if the title matches the search
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        cards[i].style.display = ""; // Show
+                        visibleCount++;
+                    } else {
+                        cards[i].style.display = "none"; // Hide
+                    }
+                }
+            }
+
+            // 5. Show/Hide "No Results" message
+            let noResultsMsg = document.getElementById('no-results');
+            if (visibleCount === 0) {
+                noResultsMsg.style.display = "block";
+            } else {
+                noResultsMsg.style.display = "none";
+            }
+        }
+    </script>
 
 </body>
 </html>
