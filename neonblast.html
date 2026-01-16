@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neon Blast - Discounted</title>
+    <title>Neon Blast - Escalation</title>
     <style>
         body {
             margin: 0;
@@ -142,6 +142,7 @@
         let gameOver = false;
         let shopOpen = false;
         let frame = 0;
+        let spawnTimer = 0; // NEW: Tracks when to spawn next enemy
 
         // --- PLAYER ---
         const player = {
@@ -281,12 +282,12 @@
             let hp = 60, speed = 2, size = 20, color = '#ff0055', scoreVal = 10;
 
             if (rand > 0.8) { 
-                type = 'tank'; hp = 200; speed = 1; size = 30; color = '#ff5500'; scoreVal = 30; // Orange Square
+                type = 'tank'; hp = 200; speed = 1; size = 30; color = '#ff5500'; scoreVal = 30; 
             } else if (rand > 0.6) {
-                type = 'dasher'; hp = 30; speed = 4.5; size = 15; color = '#aa00ff'; scoreVal = 20; // Purple Triangle
+                type = 'dasher'; hp = 30; speed = 4.5; size = 15; color = '#aa00ff'; scoreVal = 20; 
             }
 
-            // Difficulty ramping
+            // Difficulty ramping - HP also scales slightly
             hp += Math.floor(score / 50);
 
             enemies.push({ x, y, type, hp, maxHp: hp, speed, size, color, scoreVal });
@@ -307,6 +308,19 @@
         function update() {
             if (gameOver || shopOpen) return;
             frame++;
+            spawnTimer++;
+
+            // --- DYNAMIC SPAWN LOGIC ---
+            // Start at 200. Reduce delay based on how long game has run.
+            // Minimum delay (Cap) is 20 frames (insanely fast).
+            // Formula: 200 - (frame / 20)
+            let spawnDelay = Math.max(20, 200 - Math.floor(frame / 20));
+
+            if (spawnTimer >= spawnDelay) {
+                spawnEnemy();
+                spawnTimer = 0; // Reset timer
+            }
+            // ---------------------------
 
             // Player Move
             if (keys['w'] || keys['ArrowUp']) player.y -= player.speed;
@@ -329,17 +343,14 @@
             }
 
             // Enemies
-            // MODIFIED: Changed spawn rate from 60 to 100 for fewer enemies
-            if (frame % 200 === 0) spawnEnemy();
-
             for (let i = enemies.length - 1; i >= 0; i--) {
                 let e = enemies[i];
                 let angle = Math.atan2(player.y - e.y, player.x - e.x);
                 
                 // AI Logic
                 if (e.type === 'dasher') {
-                     // Zigzag motion
-                     angle += Math.sin(frame * 0.2) * 0.5;
+                      // Zigzag motion
+                      angle += Math.sin(frame * 0.2) * 0.5;
                 }
                 
                 e.x += Math.cos(angle) * e.speed;
@@ -495,20 +506,19 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // --- SHOP LOGIC (PRICES REDUCED BY 15%) ---
+        // --- SHOP LOGIC ---
         const btnShotgun = document.getElementById('buyShotgun');
         const btnPulse = document.getElementById('buyPulse');
-        const btnSniper = document.getElementById('buySniper'); // Railgun
+        const btnSniper = document.getElementById('buySniper');
         const btnMini = document.getElementById('buyMachineGun');
         const btnHeal = document.getElementById('buyHeal');
 
         function updateShopUI() {
-            checkBuy(btnShotgun, 170, ownedWeapons.shotgun); // Was 200
-            checkBuy(btnPulse, 425, ownedWeapons.pulse);     // Was 500
-            checkBuy(btnSniper, 680, ownedWeapons.railgun);  // Was 800
-            checkBuy(btnMini, 1020, ownedWeapons.minigun);   // Was 1200
+            checkBuy(btnShotgun, 170, ownedWeapons.shotgun); 
+            checkBuy(btnPulse, 425, ownedWeapons.pulse);      
+            checkBuy(btnSniper, 680, ownedWeapons.railgun);   
+            checkBuy(btnMini, 1020, ownedWeapons.minigun);    
             
-            // Heal logic (Was 150)
             if (score >= 125 && player.currentHp < player.maxHp) {
                 btnHeal.classList.remove('disabled');
             } else {
@@ -527,7 +537,7 @@
             }
         }
 
-        // Shop Clicks (Updated Costs)
+        // Shop Clicks
         btnShotgun.onclick = () => buy('shotgun', 170);
         btnPulse.onclick = () => buy('pulse', 425);
         btnSniper.onclick = () => buy('railgun', 680);
