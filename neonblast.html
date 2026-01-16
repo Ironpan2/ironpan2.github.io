@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neon Blast</title>
+    <title>Neon Blast - Discounted</title>
     <style>
         body {
             margin: 0;
@@ -111,22 +111,22 @@
         </div>
 
         <div id="shopOverlay">
-            <h2>CYBER ARMORY</h2>
+            <h2>CYBER ARMORY (SALE)</h2>
             <div class="shop-grid">
                 <div class="shop-item" id="buyShotgun">
-                    <strong>SCATTER GUN</strong><br>Spread Shot<br>Cost: 200
+                    <strong>SCATTER GUN</strong><br>Spread Shot<br>Cost: 170
                 </div>
                 <div class="shop-item" id="buyPulse">
-                    <strong>PULSE RIFLE</strong><br>3-Round Burst<br>Cost: 500
+                    <strong>PULSE RIFLE</strong><br>3-Round Burst<br>Cost: 425
                 </div>
                 <div class="shop-item" id="buySniper">
-                    <strong>RAILGUN</strong><br>Piercing Beam<br>Cost: 800
+                    <strong>RAILGUN</strong><br>Piercing Beam<br>Cost: 680
                 </div>
                 <div class="shop-item" id="buyMachineGun">
-                    <strong>PLASMA AUTOCANNON</strong><br>Rapid Fire<br>Cost: 1200
+                    <strong>PLASMA AUTOCANNON</strong><br>Rapid Fire<br>Cost: 1020
                 </div>
                 <div class="shop-item" id="buyHeal" style="grid-column: span 2; border-color: #ff0055;">
-                    <strong>REPAIR SYSTEM</strong><br>+30 HP<br>Cost: 150
+                    <strong>REPAIR SYSTEM</strong><br>+30 HP<br>Cost: 125
                 </div>
             </div>
             <div class="key-hint">Press 1-5 to switch weapons | Press U to Close Shop</div>
@@ -329,7 +329,8 @@
             }
 
             // Enemies
-            if (frame % 60 === 0) spawnEnemy();
+            // MODIFIED: Changed spawn rate from 60 to 100 for fewer enemies
+            if (frame % 100 === 0) spawnEnemy();
 
             for (let i = enemies.length - 1; i >= 0; i--) {
                 let e = enemies[i];
@@ -494,7 +495,7 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // --- SHOP LOGIC ---
+        // --- SHOP LOGIC (PRICES REDUCED BY 15%) ---
         const btnShotgun = document.getElementById('buyShotgun');
         const btnPulse = document.getElementById('buyPulse');
         const btnSniper = document.getElementById('buySniper'); // Railgun
@@ -502,13 +503,13 @@
         const btnHeal = document.getElementById('buyHeal');
 
         function updateShopUI() {
-            checkBuy(btnShotgun, 200, ownedWeapons.shotgun);
-            checkBuy(btnPulse, 500, ownedWeapons.pulse);
-            checkBuy(btnSniper, 800, ownedWeapons.railgun);
-            checkBuy(btnMini, 1200, ownedWeapons.minigun);
+            checkBuy(btnShotgun, 170, ownedWeapons.shotgun); // Was 200
+            checkBuy(btnPulse, 425, ownedWeapons.pulse);     // Was 500
+            checkBuy(btnSniper, 680, ownedWeapons.railgun);  // Was 800
+            checkBuy(btnMini, 1020, ownedWeapons.minigun);   // Was 1200
             
-            // Heal logic
-            if (score >= 150 && player.currentHp < player.maxHp) {
+            // Heal logic (Was 150)
+            if (score >= 125 && player.currentHp < player.maxHp) {
                 btnHeal.classList.remove('disabled');
             } else {
                 btnHeal.classList.add('disabled');
@@ -526,14 +527,14 @@
             }
         }
 
-        // Shop Clicks
-        btnShotgun.onclick = () => buy('shotgun', 200);
-        btnPulse.onclick = () => buy('pulse', 500);
-        btnSniper.onclick = () => buy('railgun', 800);
-        btnMini.onclick = () => buy('minigun', 1200);
+        // Shop Clicks (Updated Costs)
+        btnShotgun.onclick = () => buy('shotgun', 170);
+        btnPulse.onclick = () => buy('pulse', 425);
+        btnSniper.onclick = () => buy('railgun', 680);
+        btnMini.onclick = () => buy('minigun', 1020);
         btnHeal.onclick = () => {
-            if(score >= 150 && player.currentHp < player.maxHp) {
-                score -= 150;
+            if(score >= 125 && player.currentHp < player.maxHp) {
+                score -= 125;
                 player.currentHp = Math.min(100, player.currentHp + 30);
                 updateHUD(); updateShopUI();
             }
