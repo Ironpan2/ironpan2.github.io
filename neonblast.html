@@ -314,7 +314,7 @@
             // Start at 200. Reduce delay based on how long game has run.
             // Minimum delay (Cap) is 20 frames (insanely fast).
             // Formula: 200 - (frame / 20)
-            let spawnDelay = Math.max(20, 200 - Math.floor(frame / 200));
+            let spawnDelay = Math.max(20, 200 - Math.floor(frame / 90));
 
             if (spawnTimer >= spawnDelay) {
                 spawnEnemy();
