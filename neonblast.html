@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neon Blast 3D - Fixed Shooting</title>
+    <title>Neon Blast 3D - Cover & Structures</title>
     <style>
         /* --- CORE STYLES --- */
         body { margin: 0; overflow: hidden; background-color: #050505; font-family: 'Courier New', Courier, monospace; user-select: none; }
@@ -190,9 +190,12 @@
 
     <div id="start-screen" class="overlay-screen">
         <h1 style="color: #00ffcc;">NEON BLAST 3D</h1>
-        <h2>TACTICAL FIX</h2>
+        <h2>TACTICAL COVER UPDATE</h2>
         <button id="btnStart">INITIALIZE LINK</button>
-        <p style="font-size: 12px; color: #666; margin-top: 20px;">Use [Q] for Grenades, [Right Click] to Zoom</p>
+        <p style="font-size: 12px; color: #666; margin-top: 20px;">
+            Use walls for cover. Enemies cannot walk through them.<br>
+            Only the <span style="color:#ff00ff">RAILGUN</span> penetrates walls.
+        </p>
     </div>
 
     <div id="shop-screen" class="overlay-screen">
@@ -265,7 +268,7 @@
 
         // --- GLOBALS ---
         let scene, camera, renderer, composer, controls;
-        let raycaster, groundRaycaster;
+        let raycaster, groundRaycaster, wallRaycaster;
         let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, keys = {};
         let prevTime = performance.now();
         
@@ -274,6 +277,7 @@
         let direction = new THREE.Vector3();
         let isGrounded = false;
         const PLAYER_HEIGHT = 1.6;
+        const PLAYER_RADIUS = 0.5;
         const GRAVITY = 30.0;
         const JUMP_FORCE = 12.0;
         
@@ -291,6 +295,7 @@
         let enemies = [];
         let bullets = []; 
         let activeGrenades = [];
+        let obstacles = []; // Walls
         let spawnTimer = 0;
 
         // Weapon/Zoom
@@ -359,6 +364,9 @@
             floor.userData.isFloor = true;
             scene.add(floor);
 
+            // Generate Level Walls
+            createLevel();
+
             // Weapon
             gunMesh = new THREE.Mesh(
                 new THREE.BoxGeometry(0.1, 0.15, 0.6),
@@ -376,6 +384,7 @@
             controls = new PointerLockControls(camera, document.body);
             raycaster = new THREE.Raycaster();
             groundRaycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, PLAYER_HEIGHT + 0.1);
+            wallRaycaster = new THREE.Raycaster(); // For enemy AI detection
 
             // Listeners
             document.getElementById('btnStart').addEventListener('click', () => controls.lock());
@@ -402,28 +411,62 @@
             document.addEventListener('keydown', onKeyDown);
             document.addEventListener('keyup', onKeyUp);
             
-            // --- FIXED CLICK HANDLER ---
             document.addEventListener('mousedown', (e) => {
                 if (isGameActive) {
                     if (e.button === 0) {
                         isMouseDown = true;
-                        // FIX: Fire immediately if not auto
                         if (!GUNS[currentGunIndex].auto) attemptShoot();
                     }
                     if (e.button === 2) setZoom(true);
                 }
             });
-            
             document.addEventListener('mouseup', (e) => {
                 if(e.button === 0) isMouseDown = false;
                 if(e.button === 2) setZoom(false);
             });
-            // Disable context menu for Right Click Zoom
             document.addEventListener('contextmenu', event => event.preventDefault());
 
             window.addEventListener('resize', onWindowResize);
             
             updateHUD();
+        }
+
+        // --- LEVEL GENERATION ---
+        function createLevel() {
+            // Create some random walls/pillars
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1 });
+            const edgeMat = new THREE.LineBasicMaterial({ color: 0x00ffcc });
+
+            for(let i=0; i<35; i++) {
+                const w = 2 + Math.random() * 8;
+                const h = 4 + Math.random() * 6;
+                const d = 2 + Math.random() * 8;
+                
+                const geo = new THREE.BoxGeometry(w, h, d);
+                const mesh = new THREE.Mesh(geo, wallMat);
+                
+                // Random pos within -50 to 50, avoiding center start
+                let x, z;
+                do {
+                    x = (Math.random() - 0.5) * 120;
+                    z = (Math.random() - 0.5) * 120;
+                } while (Math.abs(x) < 10 && Math.abs(z) < 10); // Keep center clear
+
+                mesh.position.set(x, h/2, z);
+                mesh.userData = { isWall: true };
+                
+                // Add neon edges
+                const edges = new THREE.EdgesGeometry(geo);
+                const line = new THREE.LineSegments(edges, edgeMat);
+                mesh.add(line);
+
+                // Add bounding box for collision math
+                mesh.geometry.computeBoundingBox();
+                mesh.userData.bbox = new THREE.Box3().setFromObject(mesh);
+
+                scene.add(mesh);
+                obstacles.push(mesh);
+            }
         }
 
         // --- SHOP & UI ---
@@ -553,12 +596,8 @@
         function setZoom(bool) {
             if (isZooming === bool) return;
             isZooming = bool;
-            
-            // Target FOV
             const target = isZooming ? CONFIG.fovZoom : CONFIG.fovNormal;
-            
-            // Simple animate
-            const duration = 200; // ms
+            const duration = 200;
             const start = performance.now();
             const startFov = camera.fov;
             
@@ -567,79 +606,64 @@
                 const progress = Math.min(1, (now - start) / duration);
                 camera.fov = startFov + (target - startFov) * progress;
                 camera.updateProjectionMatrix();
-                
                 if (progress < 1) requestAnimationFrame(animateZoom);
             }
             animateZoom();
-
-            // Adjust crosshair visibility
             crosshair.style.opacity = isZooming ? '0.3' : '1.0';
         }
 
         function throwGrenade() {
             if (grenadeCount <= 0) return;
-            
             grenadeCount--;
             updateHUD();
 
-            // Setup Mesh
             const geo = new THREE.DodecahedronGeometry(0.2);
             const mat = new THREE.MeshStandardMaterial({ color: 0xff0055, emissive: 0x550000 });
             const mesh = new THREE.Mesh(geo, mat);
-            
-            // Start at camera
             mesh.position.copy(camera.position);
             
-            // Calculate throw direction
             const throwDir = new THREE.Vector3();
             camera.getWorldDirection(throwDir);
-            
-            const velocity = throwDir.multiplyScalar(25); // Speed
-            velocity.y += 5; // Upward arc
-            
-            // Add velocity to player velocity for momentum
+            const velocity = throwDir.multiplyScalar(25); 
+            velocity.y += 5; 
             velocity.add(velocity.clone().multiplyScalar(0.2)); 
 
-            activeGrenades.push({
-                mesh: mesh,
-                vel: velocity,
-                life: 2.0, // Explode after 2s
-                bounces: 0
-            });
-            
+            activeGrenades.push({ mesh: mesh, vel: velocity, life: 2.0 });
             scene.add(mesh);
         }
 
         function updateGrenades(delta) {
             for (let i = activeGrenades.length - 1; i >= 0; i--) {
                 const g = activeGrenades[i];
-                
-                // Gravity
                 g.vel.y -= GRAVITY * delta;
                 
-                // Move
                 const nextPos = g.mesh.position.clone().addScaledVector(g.vel, delta);
                 
-                // Simple Floor Bounce
+                // Simple Floor Collision
                 if (nextPos.y < 0.2) {
                     nextPos.y = 0.2;
-                    g.vel.y *= -0.5; // Lose energy
-                    g.vel.x *= 0.8;  // Friction
+                    g.vel.y *= -0.5;
+                    g.vel.x *= 0.8;
                     g.vel.z *= 0.8;
+                }
+
+                // Simple Wall Collision (Bounce)
+                for(let wall of obstacles) {
+                    const box = wall.userData.bbox;
+                    if(box.containsPoint(nextPos)) {
+                         g.vel.x *= -0.5; g.vel.z *= -0.5;
+                         nextPos.copy(g.mesh.position); // Reset to prevent sticking
+                    }
                 }
                 
                 g.mesh.position.copy(nextPos);
                 g.mesh.rotation.x += g.vel.z * delta;
                 g.mesh.rotation.z -= g.vel.x * delta;
-                
-                // Tick down
                 g.life -= delta;
                 
-                // Pulse Color
                 const pulse = Math.sin(g.life * 20) * 0.5 + 0.5;
                 g.mesh.material.emissiveIntensity = 1 + pulse * 5;
 
-                // Explode
                 if (g.life <= 0) {
                     explodeGrenade(g.mesh.position);
                     scene.remove(g.mesh);
@@ -651,15 +675,21 @@
         }
 
         function explodeGrenade(pos) {
-            // Visual
-            createExplosion(pos, 0xff0055, 30, 2.0); // Big explosion
-            
-            // Damage Logic
+            createExplosion(pos, 0xff0055, 30, 2.0);
             const radius = 15;
             enemies.forEach(e => {
                 const dist = e.position.distanceTo(pos);
                 if (dist < radius) {
-                    // Linear falloff damage: 150 at center, 0 at edge
+                    // Check if there is a wall between grenade and enemy
+                    const dir = e.position.clone().sub(pos).normalize();
+                    wallRaycaster.set(pos, dir);
+                    const wallHits = wallRaycaster.intersectObjects(obstacles);
+                    
+                    // If wall hit is closer than enemy, block damage (cover)
+                    if (wallHits.length > 0 && wallHits[0].distance < dist) {
+                        return; // Blocked by wall
+                    }
+
                     const dmg = Math.floor(150 * (1 - dist/radius));
                     if (dmg > 0) damageEnemy(e, dmg);
                 }
@@ -687,10 +717,7 @@
                 isReloading = true;
                 reloadMsg.style.display = 'block';
                 ammoCountEl.innerText = "...";
-                
-                // Cancel Zoom on reload
                 setZoom(false);
-
                 setTimeout(() => {
                     if (currentGunIndex === gun.id) { 
                         currentAmmo = gun.mag;
@@ -713,7 +740,6 @@
                     return;
                 }
                 
-                // Fire
                 if (gun.type === 'burst') {
                     fireShot(gun);
                     setTimeout(() => fireShot(gun), 100);
@@ -735,7 +761,6 @@
             setTimeout(() => { flashLight.intensity = 0; }, 50);
 
             for (let i = 0; i < gun.count; i++) {
-                // If Zoomed, reduce spread by 70%
                 let spread = gun.spread;
                 if (isZooming) spread *= 0.3;
 
@@ -746,14 +771,27 @@
                 createTracer(gun.color, xOff, yOff);
 
                 const intersects = raycaster.intersectObjects(scene.children);
+                
                 for (let hit of intersects) {
                     if (hit.object.userData.isFloor || hit.object.type === 'GridHelper') continue;
                     
+                    // WALL COLLISION FOR BULLETS
+                    if (hit.object.userData.isWall) {
+                        if (gun.type === 'pierce') {
+                            // Railgun passes through, maybe draw a spark but continue
+                            createSparks(hit.point, 3, 0xaaaaaa);
+                            continue; 
+                        } else {
+                            // Normal guns stop at wall
+                            createSparks(hit.point, 5, 0x00ffcc);
+                            break; 
+                        }
+                    }
+
                     if (hit.object.userData.isEnemy) {
                         damageEnemy(hit.object, gun.damage);
-                        if (!gun.type === 'pierce') break; 
-                    } else {
-                        break; 
+                        createSparks(hit.point, 5, hit.object.userData.color);
+                        if (gun.type !== 'pierce') break; 
                     }
                 }
             }
@@ -761,9 +799,7 @@
 
         function createTracer(color, xOff, yOff) {
             const mat = new THREE.LineBasicMaterial({ color: color });
-            // Adjust origin slightly if zoomed to look correct
             const startZ = isZooming ? -1.0 : -0.5;
-            
             const pts = [
                 new THREE.Vector3(0.25, -0.25, startZ),
                 new THREE.Vector3(xOff * 30, yOff * 30, -100)
@@ -774,12 +810,51 @@
             setTimeout(() => { camera.remove(line); geo.dispose(); mat.dispose(); }, 40);
         }
 
+        function createSparks(pos, count, color) {
+            const geo = new THREE.BufferGeometry();
+            const positions = [];
+            for(let i=0; i<count; i++) {
+                positions.push(pos.x, pos.y, pos.z);
+            }
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            const mat = new THREE.PointsMaterial({ color: color, size: 0.1 });
+            const points = new THREE.Points(geo, mat);
+            scene.add(points);
+            
+            // Simple expansion animation
+            const dirs = [];
+            for(let i=0; i<count; i++) dirs.push(new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize());
+
+            let life = 1.0;
+            function animSparks() {
+                life -= 0.1;
+                const posAttr = points.geometry.attributes.position;
+                for(let i=0; i<count; i++) {
+                    posAttr.setXYZ(i, 
+                        posAttr.getX(i) + dirs[i].x * 0.1,
+                        posAttr.getY(i) + dirs[i].y * 0.1,
+                        posAttr.getZ(i) + dirs[i].z * 0.1
+                    );
+                }
+                posAttr.needsUpdate = true;
+                if(life > 0) requestAnimationFrame(animSparks);
+                else { scene.remove(points); geo.dispose(); mat.dispose(); }
+            }
+            animSparks();
+        }
+
         // --- ENEMY LOGIC ---
         function spawnEnemy() {
             const angle = Math.random() * Math.PI * 2;
             const dist = 30 + Math.random() * 20;
             const x = camera.position.x + Math.cos(angle) * dist;
             const z = camera.position.z + Math.sin(angle) * dist;
+
+            // Ensure not spawning inside a wall
+            const tempPos = new THREE.Vector3(x, 1, z);
+            for(let w of obstacles) {
+                if(w.userData.bbox.containsPoint(tempPos)) return; // Skip spawn if in wall
+            }
 
             const r = Math.random();
             let typeData = { name:'chaser', hp: 51, speed: 5, color: 0xff0055, scale: 1, score: 10 }; 
@@ -794,10 +869,7 @@
 
             let geo, mat;
             mat = new THREE.MeshStandardMaterial({ 
-                color: 0x111111, 
-                emissive: typeData.color, 
-                emissiveIntensity: 1.5,
-                roughness: 0.1
+                color: 0x111111, emissive: typeData.color, emissiveIntensity: 1.5, roughness: 0.1
             });
 
             if (typeData.name === 'tank') geo = new THREE.IcosahedronGeometry(0.8, 0); 
@@ -811,7 +883,6 @@
 
             mesh.userData = { isEnemy: true, ...typeData, maxHp: typeData.hp };
             
-            // Health Bar
             const barGroup = new THREE.Group();
             barGroup.position.y = 1.5; 
             const bgMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.15), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
@@ -850,7 +921,6 @@
             scene.remove(enemy);
             enemies = enemies.filter(e => e !== enemy);
             enemy.geometry.dispose(); enemy.material.dispose();
-
             if (isShopOpen) shopCreditsEl.innerText = credits;
         }
 
@@ -891,9 +961,11 @@
         function resetGame() {
             enemies.forEach(e => scene.remove(e));
             activeGrenades.forEach(g => scene.remove(g.mesh));
-            enemies = [];
-            activeGrenades = [];
+            obstacles.forEach(w => scene.remove(w));
+            enemies = []; activeGrenades = []; obstacles = [];
             
+            createLevel(); // New level
+
             score = 0; credits = 0; playerHealth = 100;
             grenadeCount = 0;
             ownedGuns = [0]; equipGun(0);
@@ -906,6 +978,40 @@
         }
 
         // --- PHYSICS & LOOP ---
+        function checkPlayerCollisions() {
+            const playerPos = camera.position;
+            const playerBox = new THREE.Box3();
+            const radius = 0.5;
+            playerBox.min.set(playerPos.x - radius, playerPos.y - 1, playerPos.z - radius);
+            playerBox.max.set(playerPos.x + radius, playerPos.y + 1, playerPos.z + radius);
+
+            for (let wall of obstacles) {
+                if (playerBox.intersectsBox(wall.userData.bbox)) {
+                    // Resolve Collision - Simple "Push Out"
+                    // Find depth of intersection
+                    const wb = wall.userData.bbox;
+                    const dx1 = Math.abs(wb.max.x - playerBox.min.x);
+                    const dx2 = Math.abs(playerBox.max.x - wb.min.x);
+                    const dz1 = Math.abs(wb.max.z - playerBox.min.z);
+                    const dz2 = Math.abs(playerBox.max.z - wb.min.z);
+
+                    const overlapX = Math.min(dx1, dx2);
+                    const overlapZ = Math.min(dz1, dz2);
+
+                    // Push out the smallest overlap
+                    if (overlapX < overlapZ) {
+                        const sign = (playerPos.x > wall.position.x) ? 1 : -1;
+                        camera.position.x += overlapX * sign;
+                        velocity.x = 0;
+                    } else {
+                        const sign = (playerPos.z > wall.position.z) ? 1 : -1;
+                        camera.position.z += overlapZ * sign;
+                        velocity.z = 0;
+                    }
+                }
+            }
+        }
+
         function applyMovement(delta) {
             groundRaycaster.ray.origin.copy(camera.position);
             const hits = groundRaycaster.intersectObjects(scene.children);
@@ -945,7 +1051,7 @@
             if (isGrounded) {
                 const speed = Math.sqrt(velocity.x*velocity.x + velocity.z*velocity.z);
                 if (speed > 0) {
-                    const drop = speed * 10.0 * delta; // Friction
+                    const drop = speed * 10.0 * delta; 
                     const newSpeed = Math.max(0, speed - drop);
                     if(speed > 0) {
                         velocity.x *= newSpeed / speed;
@@ -967,6 +1073,9 @@
             }
 
             controls.getObject().position.addScaledVector(velocity, delta);
+
+            // Wall Collision Check
+            checkPlayerCollisions();
 
             if (controls.getObject().position.y < PLAYER_HEIGHT) {
                 controls.getObject().position.y = PLAYER_HEIGHT;
@@ -1002,13 +1111,35 @@
                 }
 
                 enemies.forEach(e => {
-                    const speed = e.userData.speed * delta;
-                    e.lookAt(camera.position);
-                    if (e.userData.barGroup) e.userData.barGroup.lookAt(camera.position);
-                    e.translateZ(speed);
+                    // Logic: Move towards player, but stop at walls
+                    const distToPlayer = e.position.distanceTo(camera.position);
+                    const dirToPlayer = new THREE.Vector3().subVectors(camera.position, e.position).normalize();
+                    dirToPlayer.y = 0;
+
+                    // Enemy Wall Collision Check (Raycast)
+                    wallRaycaster.set(e.position, dirToPlayer);
+                    const wallHits = wallRaycaster.intersectObjects(obstacles);
+                    let blocked = false;
+                    
+                    if (wallHits.length > 0 && wallHits[0].distance < 1.5) {
+                        blocked = true; // Wall in front
+                    }
+
+                    if (!blocked) {
+                        e.lookAt(camera.position.x, e.position.y, camera.position.z);
+                        if (e.userData.barGroup) e.userData.barGroup.lookAt(camera.position);
+                        
+                        const speed = e.userData.speed * delta;
+                        e.translateZ(speed);
+                    } else {
+                        // Dumb AI: If blocked, maybe slide a bit? 
+                        // For now, they just stare at the wall (outmaneuvered)
+                    }
+
                     if (e.userData.name === 'dasher') e.rotateZ(0.2); 
-                    if (e.position.distanceTo(camera.position) < 1.0) {
+                    if (distToPlayer < 1.0) {
                         takeDamage(10);
+                        // Bounce back
                         const angle = Math.atan2(e.position.x - camera.position.x, e.position.z - camera.position.z);
                         e.position.x += Math.sin(angle) * 5;
                         e.position.z += Math.cos(angle) * 5;
@@ -1041,12 +1172,8 @@
             hpText.innerText = playerHealth;
             ammoCountEl.innerText = `${currentAmmo} / ${GUNS[currentGunIndex].mag}`;
             
-            // Grenade UI
-            if (grenadeCount > 0) {
-                grenadeIcon.classList.add('grenade-active');
-            } else {
-                grenadeIcon.classList.remove('grenade-active');
-            }
+            if (grenadeCount > 0) grenadeIcon.classList.add('grenade-active');
+            else grenadeIcon.classList.remove('grenade-active');
         }
 
         function onKeyDown(e) {
