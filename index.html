@@ -1,1 +1,166 @@
-have a good summer. This website will soon be used for other purposes.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ironpan2's place</title>
+    
+    <style>
+        @import url('https://api.fontshare.com/v2/css?f[]=clash-grotesk@200,300,400,500,600,700&display=swap');
+
+        /* Global Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Clash Grotesk', sans-serif;
+            background: url('https://wallpapercave.com/wp/wp2912040.jpg') no-repeat center center fixed;
+            background-size: cover;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 40px 0;
+        }
+
+        /* Glassmorphism Container */
+        .glass-container {
+            background: rgba(15, 15, 15, 0.5); /* Dark transparent background */
+            backdrop-filter: blur(16px); /* Blur effect */
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 60px 50px; /* Increased top/bottom padding */
+            display: flex;
+            gap: 50px;
+            max-width: 1200px; 
+            width: 95%;
+            min-height: 600px; /* Set a substantial minimum height to make it taller */
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+        }
+
+        /* Main Content Area (Left side) */
+        .content {
+            display: flex;
+            flex-direction: column;
+            gap: 35px; /* Increased gap between header and description */
+            flex-grow: 1; 
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+        }
+
+        .pfp {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .about-text h1 {
+            font-weight: 600;
+            font-size: 3rem;
+            margin-bottom: 5px;
+            letter-spacing: 1px;
+        }
+
+        .about-text h2 {
+            font-weight: 400;
+            font-size: 1.4rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .description {
+            line-height: 1.8;
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 1.25rem;
+            font-weight: 300;
+        }
+
+        /* Sidebar for Buttons (Right side) */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px; /* Slightly wider spacing between buttons */
+            min-width: 240px;
+            justify-content: center;
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            padding-left: 50px;
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.05);
+            color: #ffffff;
+            text-decoration: none;
+            padding: 18px 25px; /* Taller buttons */
+            border-radius: 14px;
+            font-weight: 500;
+            font-size: 1.2rem;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Responsive Design for mobile */
+        @media (max-width: 850px) {
+            .glass-container {
+                flex-direction: column;
+                padding: 40px 30px;
+                gap: 40px;
+                min-height: auto; /* Allow naturally dynamic height on mobile */
+            }
+            .sidebar {
+                border-left: none;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+                padding-left: 0;
+                padding-top: 40px;
+                flex-direction: column;
+                min-width: 100%;
+            }
+            .nav-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="glass-container">
+        <div class="content">
+            <div class="profile-header">
+                <img src="https://images.steamusercontent.com/ugc/999141806430406191/A681AB1844CD8B137F12987354EC91DF73095BAF/?imw=5000&imh=5000&ima=fit&impolicy=Letterbox&imcolor=%23000000&letterbox=false" alt="My Profile Picture" class="pfp">
+                <div class="about-text">
+                    <h1>ironpan2</h1>
+                    <h2>cool guy</h2>
+                </div>
+            </div>
+            
+            <p class="description">
+                Hello I am ironpan2. I like to Reverse engineering, Video game cheating and linux. I use Void linux with runit init system with Kde plasma. I play CS2, Roblox and TF2. I am current working on some projects but for now all I have to show is my CS2 offset dumper for linux which I will be updating the CS2 Linux offsets every update. And I like Jesus Christ alot he is my lord and saviour
+            </p>
+        </div>
+
+        <div class="sidebar">
+            <a href="https://raw.githubusercontent.com/Ironpan2/ironpan2.github.io/refs/heads/main/offsets.hpp" class="nav-btn">CS2 Linux offsets</a>
+            <a href="https://bigrat.monster/" class="nav-btn">placeholder</a>
+            <a href="https://bigrat.monster/" class="nav-btn">placeholder</a>
+        </div>
+    </div>
+
+</body>
+</html>
